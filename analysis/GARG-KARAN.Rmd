@@ -1,0 +1,306 @@
+---
+title: "Recommendations for QANTAS: USA airport infrastucture, and a domestic aircraft storage facility"
+subtitle: Assignment 1, Master of Business Analytics
+author: Prepared by Garg Karan, 32106580, kgar0017@student.monash.edu 
+date: 'April 16, 2021'
+output:
+  bookdown::html_document2:
+             css: monashreport.css
+             includes:
+               before_body: header.html
+  bookdown::pdf_document2:
+             css: monashreport.css
+             includes:
+               before_body: header.html
+keep_md: true 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      cache=TRUE, 
+                      messages=FALSE, 
+                      warning=FALSE,
+                      fig.align = "center")
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(bookdown)
+library(kableExtra)
+library(plotly)
+library(lubridate)
+library(ggmap)
+library(ggthemes)
+library(leaflet)
+library(gridExtra)
+```
+
+# Task 1
+
+We need to find which airport among Dallas/Fort Worth International Airport ***DFW*** and   Angeles International Airport ***LAX*** is more efficient to be used as the primary airport to fly in and out of USA.
+
+```{r read-flights, include=FALSE}
+florg <- read.csv(here::here("data/florg.csv"))
+flarr <- read.csv(here::here("data/flarr.csv"))
+```
+
+## About the data
+
+* Overview
+  * The data used for this task has been extracted from [Bureau of Transportation Statistics aviation ontime performance database](https://www.transtats.bts.gov/DL_SelectFields.asp?gnoyr_VQ=FGJ).
+  * This is an observational data, but it is a complete set of data, like a census for all.
+  * One row is one operated flight. You can think of this as event data. 
+* This is an open data. There is no obvious license, but it falls under the US open data policy guidelines
+* The main data extracted from the above mentioned has been split into 2 files:
+  * 1st .csv containing all the flights who have the Departure airport as ***DFW*** or ***LAX***.
+ ata extracted from the above mentioned hhas been split into 2 files:
+  * 2nd .csv containing all the flights whho have the Arrival airport as ***DFW*** or ***LAX***.Below is its preview:
+  * Therefore, I definitely believe the above subsetted files will help me in finding the solution to my task.
+
+## Comparison of US airports goes here
+
+### Analysis for LAX and DFW airports when considered as a Departure airport
+
+```{r statist1,echo=FALSE}
+florg %>% 
+  group_by(ORIGIN) %>% 
+  summarise(Median_Dep_Delay = median(DEP_DELAY,na.rm=TRUE),
+            Min_Dep_Delay = min(DEP_DELAY,na.rm=TRUE),
+            Max_Dep_Delay = max(DEP_DELAY,na.rm=TRUE)) %>% 
+  kable(booktabs = TRUE,
+        caption = 'Summary of DFW and LAX airport as a Departure airport') %>% 
+  kable_styling(bootstrap_options = c("basic","striped"))
+```
+
+```{r graphic1,echo=FALSE,fig.cap="Average Departure Delay of DFW and LAX over the period of time"}
+m <- florg %>% 
+  mutate(FL_DATE = dmy(FL_DATE))  %>% 
+  group_by(ORIGIN,FL_DATE) %>% 
+  summarise(avg_delay = (min(DEP_DELAY,na.rm=TRUE)+max(DEP_DELAY,na.rm=TRUE))/2) %>% 
+ ggplot(
+       aes(FL_DATE,
+           avg_delay,
+           color = ORIGIN)) +
+  ylab("avg_dep_delay") +
+  geom_line() +
+  geom_point()
+ggplotly(m)
+
+```
+
+### Analysis for LAX and DFW airports when considered as a Arrival airport
+
+```{r statist2,echo=FALSE}
+flarr %>% 
+  group_by(DEST) %>% 
+  summarise(Median_Arr_Delay = median(ARR_DELAY,na.rm=TRUE),
+            Min_Arr_Delay = min(ARR_DELAY,na.rm=TRUE),
+            Max_Arr_Delay = max(ARR_DELAY,na.rm=TRUE)) %>% 
+    kable(booktabs = TRUE,
+        caption = 'Summary of DFW and LAX airport as a Arrival airport') %>% 
+  kable_styling(bootstrap_options = c("basic","striped"))
+```
+
+```{r graphic2,echo=FALSE,fig.cap="Average Arrival Delay of DFW and LAX over the period of time"}
+m1 <- flarr %>% 
+  mutate(FL_DATE = dmy(FL_DATE))  %>% 
+  group_by(DEST,FL_DATE) %>% 
+  summarise(avg_delay = (min(ARR_DELAY,na.rm=TRUE)+max(ARR_DELAY,na.rm=TRUE))/2) %>% 
+ ggplot(
+       aes(FL_DATE,
+           avg_delay,
+           color = DEST)) +
+  ylab("avg_arr_delay") +
+  geom_line() +
+  geom_point()
+ggplotly(m1)
+```
+
+## Calculations used
+
+* I am using departure and arrival delay as the prime factor to calculate the efficiency of the airports.
+* In both Table \@ref(tab:statist1) and Table \@ref(tab:statist2):-
+  * The data has been grouped by **Origin** and **Destination** respectively.
+  * Then the median,maximum and minimum departure delay is calculated using the summarise function.
+  * The kable is used to view the output in table form and kable_styling is used to make the table more attractive.
+* In both Figure \@ref(fig:graphic1) and Figure \@ref(fig:graphic2):-
+  * The **Fl_date** attribute datatype was converted to datetime so that it can be used in the plot.
+  * Then the data was grouped by either "Origin & FL_Date" or "Dest & Fl_date" dependinig upon the dataset we are working on.
+  * Then avg delay is calculated using the formula "(min_delay + max_delay)/2", where delay is either arrival or departure.
+  * Finaly a line graph is plotted of **Fl_date vs avg_delay** using ggplot and geom_line.
+  * Additional functions such as geom_point and ggplotly are only used to make the graph more interactive.
+
+## Summary/Conclusion
+
+### When the airports are considered for departure
+
+* In Table \@ref(tab:statist1), we can clearly notice the following:
+  * Min delay of **DFW** is -20 which is better than **LAX** as it means flight left 20min earlier than actual depart time.
+  * Max delay of **DFW** is 1193 which is better than **LAX** as it means flight left 1193 min after the actual depart time.
+  * The Median delay figure of both the aiports also suggest that **DFW** is better than **LAX** when considered as the departure airport as less flights departed before the scheduled time/.
+* In Figure \@ref(fig:graphic1), we can clearly notice the following:
+  * **DFW** experiences max avg delay of 591min on 11th jan, and the min avg_delay of 84min on both 5th and 7th january.
+  * **LAX** experiences max avg delay of 739.5min on 12th jan, and the min avg_delay of 66.5min on 6th january.
+
+### When the airports are considered for Arrival
+
+* In Table \@ref(tab:statist2), we can clearly notice the following:
+  * Min delay of **LAX** is -96 which is better than **LAX** as it means flight arrived 96min earlier than actual arrival time.
+  * Max delay of **LAX** is 1509 which is better than **LAX** as it means flight arrived 1509 min after the actual depart time.
+  * The Median delay figure of both the aiports also suggest that **LAX** is better than **DFW** when considered as the arrival airport, as there are more flights arriving before the scheduled time.
+* In Figure \@ref(fig:graphic2), we can clearly notice the following:
+  * **DFW** experiences max avg delay of 1233.5min on 21st jan, and the min avg_delay of 124min on 25th january.
+  * **LAX** experiences max avg delay of 734.5min on 17th jan, and the min avg_delay of 22min on 23rd january.
+
+
+Hence, we can conclude **LAX** is more efficient airport because:
+
+* There is minor difference between the flights that departed before the schedule time on both **DFW** or **LAX**, therefore we can ignore this attribute.
+* Even though departure delay of **LAX** iis pretty much higher, but at same time they have the best arrival time and even have most of the flights arriving before the scheduled time.
+* As a customer I believe it is ok to be delayed for departure until an unless you are reaching before/on-time.
+
+# Task 2
+
+We need to assess two locations in Victoria, ***Tullamarine*** and ***Bendigo***, for a new plane storage facility that has the least impact on local endangered species.
+
+## About the data
+
+* Overview
+  * The data used for this task has been extracted from [Atlas of Living Australia occurrence](https://biocache.ala.org.au/occurrences/search?q=qid%3A1617717330523&disableAllQualityFilters=true&fq=-geospatial_kosher%3A%22false%22&fq=-assertions%3AnameNotRecognised%20AND%20-assertions%3AinvalidScientificName%20AND%20-assertions%3AhomonymIssue%20AND%20-assertions%3AunknownKingdom%20AND%20-assertions%3AresourceTaxonomicScopeMismatch&fq=-duplicate_status%3A%22D%22&fq=-coordinate_uncertainty%3A%5B10001%20TO%20*%5D&fq=-user_assertions%3A50001%20AND%20-user_assertions%3A50005&fq=-outlier_layer_count%3A%5B3%20TO%20*%5D&fq=-basis_of_record%3A%22FossilSpecimen%22%20AND%20-basis_of_record%3A%22EnvironmentalDNA%22&fq=-occurrence_status%3Aabsent&fq=-year%3A%5B*%20TO%201700%5D&fq=-assertions%3A%22occCultivatedEscapee%22%20AND%20-assertions%3A%22zeroLatitude%22%20AND%20-assertions%3A%22zeroLongitude%22%20AND%20-assertions%3A%22invertedCoordinates%22%20AND%20-assertions%3A%22coordinatesCentreOfStateProvince%22%20AND%20-assertions%3A%22coordinatesCentreOfCountry%22).
+  * The species being considered are Anthochaera (Xanthomyza) phrygia,Thinornis cucullatus,Perameles gunnii,Petauroides volans,Petrogale penicillata,Neophema (Neonanodes) chrysogaster,Ornithorhynchus anatinus.
+  * In addition, we needed to filter the data with 50Km radius from above the two mentioned locations, therefore we mutated 2 extra columns in the .csv using Excel with coordinates of each airport location.
+  * These 4 newly genereated columns were used to calculate the distance of species from the locations usinng the formula "=6371*ACOS(COS(RADIANS(90-lat_loc1))*COS(RADIANS(90-lat_loc2))+SIN(RADIANS(90-lat_loc1))*SIN(RADIANS(90-lat_loc2))*COS(RADIANS(long_loc1-long_loc1)))" 
+  * The above formula was found [here](https://www.youtube.com/watch?v=bzSnw-Iz6O8)
+* This is observational data. It is provided on a voluntary basis, some by researchers, some by citizen scientists.
+
+```{r read-atlas,include=FALSE}
+atlas <- read.csv(here::here("data/victoria_final.csv"))
+```
+
+## Comparison of domestic storage sites goes here
+
+```{r filter-atlas,include=FALSE}
+atlas1 <- atlas %>% 
+  select("basisOfRecord",
+         "occurrenceStatus",
+         "eventDate",
+         "year",
+         "month",
+         "day",
+         "country",
+         "stateProvince",
+         "locality",
+         "decimalLatitude",
+         "decimalLongitude",
+         "Tull.lat",
+         "Tull.long",
+         "Tull_dist",
+         "Bendigo_lat",
+         "Bendigo_long",
+         "Bendigo_dist",
+         "scientificName",
+         "kingdom",
+         "class",
+         "genus",
+         "vernacularName",
+         "species",
+         "verbatimBasisOfRecord")
+
+# records after Jan 1, 2000
+
+atlas2 <- atlas1 %>% 
+  dplyr::filter(year >=2000)
+
+```
+
+```{r Tullamarine,echo=FALSE}
+atlas_Tull <- atlas2 %>% 
+  dplyr::filter(Tull_dist <=50)
+
+atlas_Tull %>% 
+  group_by(scientificName) %>% 
+  summarise(count = n()) %>% 
+  arrange(-count) %>% 
+  kable(booktabs = TRUE,
+        caption = 'No. of Endagered speciies in 50Km Radius of Tullamarine') %>% 
+  kable_styling(bootstrap_options = c("basic","striped"))
+```
+
+```{r Tulls,echo=FALSE,fig.cap="Spatial representian of Speciees in 50Km Radius of Tullamarine"}
+leaflet(atlas_Tull) %>%
+      addTiles() %>%
+      addCircles(~decimalLongitude,
+                 ~decimalLatitude,
+                 fill = TRUE,
+                 fillColor = atlas_Tull$scientificName,
+                 label = atlas_Tull$scientificName)
+```
+
+```{r tull-plot,echo=FALSE,fig.cap="Scatter Plot of Speciees in 50Km Radius of Tullamarine"}
+m2 <- ggplot(atlas_Tull,aes(decimalLatitude,
+                      decimalLongitude,
+                      color = scientificName,
+                      test = Tull_dist)) +
+  xlab("latitude") +
+  ylab("longitude") +
+  geom_point()
+ggplotly(m2)
+```
+
+```{r Bendigo,echo=FALSE}
+atlas_Bendigo <- atlas2 %>% 
+  dplyr::filter(Bendigo_dist <=50)
+
+atlas_Bendigo %>% 
+group_by(scientificName) %>% 
+  summarise(count = n()) %>% 
+  arrange(-count) %>% 
+  kable(booktabs = TRUE,
+        caption = 'No. of Endagered speciies in 50Km Radius of Bendigo') %>% 
+  kable_styling(bootstrap_options = c("basic","striped"))
+```
+
+
+```{r bends,echo=FALSE,fig.cap="Spatial representian of Speciees in 50Km Radius of Bendigo"}
+leaflet(atlas_Bendigo) %>%
+      addTiles() %>%
+      addCircles(~decimalLongitude,
+                 ~decimalLatitude,
+                 fill = TRUE,
+                 fillColor = atlas_Bendigo$scientificName,
+                 label = atlas_Bendigo$scientificName)
+
+```
+
+```{r bend-plot,echo=FALSE,fig.cap="Scatter Plot of Speciees in 50Km Radius of Bendigo"}
+m3 <- ggplot(atlas_Bendigo,aes(decimalLatitude,
+                      decimalLongitude,
+                      color = scientificName,
+                      test = Bendigo_dist)) +
+  xlab("latitude") +
+  ylab("longitude") +
+  geom_point()
+ggplotly(m3)
+```
+
+## Calculations Used
+
+* In both Table \@ref(tab:Tullamarine) and Table \@ref(tab:Bendigo), I have calculated the count of each species using the group_by,summarised and then arranged them in descending order.
+* In Both Figure \@ref(fig:Tulls) and Figure \@ref(fig:bends),leaflet has been used to create a map,addTiles to create the outlines of the map, AddCircles to show the spatial location of species in circle shape.
+* In both Figure \@ref(fig:tull-plot) and Figure \@ref(fig:bend-plot),functions **ggplot()**,**xlab()**,**ylab()**,**geom_point()**,**ggplotly()**have been used to create the interactive scatter plot. 
+
+## Summary/Conclusion
+
+* Table \@ref(tab:Tullamarine) and Table \@ref(tab:Bendigo), tells us that 9 species are available near Tullamarine and only 1 species is avaiable near Bendigo and that too in very less amount.
+* Figure \@ref(fig:Tulls) and Figure \@ref(fig:bends), tells us where exacly the species can be seen geographically.
+* Figure \@ref(fig:tull-plot) and Figure \@ref(fig:bend-plot), tell us not only the locations but also how far each species is from the Tullamarine/Bendigo.
+
+Hence, we can conclude that **Bendigo** is more suitable for a new plane storage facility as it has the least impact on local endangered species. 
+
+# Resources
+
+* The data used for  task 1 has been extracted from [Bureau of Transportation Statistics aviation ontime performance database](https://www.transtats.bts.gov/DL_SelectFields.asp?gnoyr_VQ=FGJ).
+* The data used for  task 2 has been extracted from [Atlas of Living Australia occurrence](https://biocache.ala.org.au/occurrences/search?q=qid%3A1617717330523&disableAllQualityFilters=true&fq=-geospatial_kosher%3A%22false%22&fq=-assertions%3AnameNotRecognised%20AND%20-assertions%3AinvalidScientificName%20AND%20-assertions%3AhomonymIssue%20AND%20-assertions%3AunknownKingdom%20AND%20-assertions%3AresourceTaxonomicScopeMismatch&fq=-duplicate_status%3A%22D%22&fq=-coordinate_uncertainty%3A%5B10001%20TO%20*%5D&fq=-user_assertions%3A50001%20AND%20-user_assertions%3A50005&fq=-outlier_layer_count%3A%5B3%20TO%20*%5D&fq=-basis_of_record%3A%22FossilSpecimen%22%20AND%20-basis_of_record%3A%22EnvironmentalDNA%22&fq=-occurrence_status%3Aabsent&fq=-year%3A%5B*%20TO%201700%5D&fq=-assertions%3A%22occCultivatedEscapee%22%20AND%20-assertions%3A%22zeroLatitude%22%20AND%20-assertions%3A%22zeroLongitude%22%20AND%20-assertions%3A%22invertedCoordinates%22%20AND%20-assertions%3A%22coordinatesCentreOfStateProvince%22%20AND%20-assertions%3A%22coordinatesCentreOfCountry%22).
+* Formula used in Task 2 was from [here](https://www.youtube.com/watch?v=bzSnw-Iz6O8). 
+
+
+
